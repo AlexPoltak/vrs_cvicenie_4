@@ -22,112 +22,124 @@
 #include "main.h"
 #include "assignment.h"
 
+void SystemClock_Config(void);
+uint8_t check_button_state(GPIO_TypeDef* PORT, uint8_t PIN);
+
+uint8_t switch_state = 0;
+
 int main(void)
 {
-  /*
-   *  DO NOT WRITE TO THE WHOLE REGISTER!!!
-   *  Write to the bits, that are meant for change.
-   */
-   
-  //Systick init
-  LL_Init1msTick(8000000);
-  LL_SYSTICK_SetClkSource(LL_SYSTICK_CLKSOURCE_HCLK);
-  LL_SetSystemCoreClock(8000000);	
+  /*Default system setup*/
+  LL_APB2_GRP1_EnableClock(LL_APB2_GRP1_PERIPH_SYSCFG);
+  LL_APB1_GRP1_EnableClock(LL_APB1_GRP1_PERIPH_PWR);
+
+  NVIC_SetPriorityGrouping(NVIC_PRIORITYGROUP_4);
+
+  SystemClock_Config();
+
 
   /*
-   * TASK - configure MCU peripherals so that button state can be read and LED will blink.
-   * Button must be connected to the GPIO port A and its pin 3.
+   * TASK - configure MCU peripherals so that button triggers external interrupt - EXTI.
+   * Button must be connected to the GPIO port B, pin 4.
    * LED must be connected to the GPIO port A and its pin 4.
    *
-   * In header file "assignment.h" define macros for MCU registers access and LED blink application.
-   * Code in this file must use these macros for the peripherals setup.
-   * Code of the LED blink application is already given so just the macros used in the application must be defined.
+   * Adjust values of macros defined in "assignment.h".
+   * Implement function "checkButtonState" declared in "assignment.h".
    */
 
 
-  /* Enable clock for GPIO port A*/
-	//type your code for GPIOA clock enable here:
-  	  	  	RCC_AHBENR_REG |= (uint32_t)(1 << 17);
+  /* Configure external interrupt - EXTI*/
+
+  	  //type your code for EXTI configuration (priority, enable EXTI, setup EXTI for input pin, trigger edge) here:
 
 
-  /* GPIOA pin 3 and 4 setup */
+  /* Configure GPIOB-4 pin as an input pin - button */
 
-	//type your code for GPIOA pins setup here:
-  	  	//Set mode for pin 3
-  	  	  	GPIOA_MODER_REG &= ~(uint32_t)(0x3 << 6); //reset
-
-  	  	//Set mode for pin 4
-  			GPIOA_MODER_REG &= ~(uint32_t)(0x3 << 8);
-  			GPIOA_MODER_REG |= (uint32_t)(1 << 8);
+	  //type your code for GPIO configuration here:
 
 
-  /*GPIO OTYPER register*/
-  			GPIOA_OTYPER_REG &= ~(1 << 4);
+  /* Configure GPIOA-4 pin as an output pin - LED */
+
+	  //type your code for GPIO configuration here:
 
 
-  /*GPIO OSPEEDR register*/
-  		//Set Low speed for GPIOA pin 4
-  			GPIOA_OSPEEDER_REG &= ~(0x3 << 8);
-
-  /*GPIO PUPDR register, reset*/
-  		//Set pull up for GPIOB pin 3 (input)
-  			GPIOA_PUPDR_REG |= (1 << 6);
-  		//Set no pull for GPIOB pin 4
-  			GPIOA_PUPDR_REG &= ~(0x3 << 8);
-
-  			enum EDGE_TYPE type;
-  			LED_OFF;
   while (1)
   {
-	  type=(edgeDetect(BUTTON_GET_STATE,5));
-	  if((type==RISE)&&(!(LED_GET_STATE)))
+	  // Modify the code below so it sets/resets used output pin connected to the LED
+	  if(switch_state)
 	  {
-		  LED_ON;
+		  GPIOB->BSRR |= GPIO_BSRR_BS_3;
+		  for(uint16_t i=0; i<0xFF00; i++){}
+		  GPIOB->BRR |= GPIO_BRR_BR_3;
+		  for(uint16_t i=0; i<0xFF00; i++){}
 	  }
-  	  else if(type==RISE)
+	  else
 	  {
-		  LED_OFF;
+		  GPIOB->BRR |= GPIO_BRR_BR_3;
 	  }
   }
 
 }
 
-/* USER CODE BEGIN 4 */
-enum EDGE_TYPE edgeDetect(uint8_t pin_state, uint8_t samples){
-	static int i=0;
+/**
+  * @brief System Clock Configuration
+  * @retval None
+  */
+void SystemClock_Config(void)
+{
+  LL_FLASH_SetLatency(LL_FLASH_LATENCY_0);
 
-	static int savingState=1;
-	static int numOfDet=0;
+  if(LL_FLASH_GetLatency() != LL_FLASH_LATENCY_0)
+  {
+  Error_Handler();  
+  }
+  LL_RCC_HSI_Enable();
 
-    enum EDGE_TYPE {NONE=0, RISE=1, FALL=2};
+   /* Wait till HSI is ready */
+  while(LL_RCC_HSI_IsReady() != 1)
+  {
+    
+  }
+  LL_RCC_HSI_SetCalibTrimming(16);
+  LL_RCC_SetAHBPrescaler(LL_RCC_SYSCLK_DIV_1);
+  LL_RCC_SetAPB1Prescaler(LL_RCC_APB1_DIV_1);
+  LL_RCC_SetAPB2Prescaler(LL_RCC_APB1_DIV_1);
+  LL_RCC_SetSysClkSource(LL_RCC_SYS_CLKSOURCE_HSI);
 
-	enum EDGE_TYPE forReturn;
-
-
-	if(pin_state!=savingState ){
-
-		if(pin_state==0){
-		savingState=0;
-		numOfDet=0;
-		}
-		else{
-		savingState=1;
-		numOfDet=0;
-		}
-			i=1;
-		}
-	if(i==1){
-		numOfDet=numOfDet+1;
-		if(numOfDet==samples){
-			if(pin_state==0){forReturn= RISE;i=0;}
-			else{forReturn= FALL;}
-		}
-		else {forReturn= NONE;}
-	}
-	else{forReturn= NONE;}
-
-return forReturn;
+   /* Wait till System clock is ready */
+  while(LL_RCC_GetSysClkSource() != LL_RCC_SYS_CLKSOURCE_STATUS_HSI)
+  {
+  
+  }
+  LL_Init1msTick(8000000);
+  LL_SYSTICK_SetClkSource(LL_SYSTICK_CLKSOURCE_HCLK);
+  LL_SetSystemCoreClock(8000000);
 }
+
+
+uint8_t checkButtonState(GPIO_TypeDef* PORT, uint8_t PIN, uint8_t edge, uint8_t samples_window, uint8_t samples_required)
+{
+	  //type your code for "checkButtonState" implementation here:
+}
+
+
+void EXTI4_IRQHandler(void)
+{
+	if(checkButtonState(GPIO_PORT_BUTTON,
+						GPIO_PIN_BUTTON,
+						BUTTON_EXTI_TRIGGER,
+						BUTTON_EXTI_SAMPLES_WINDOW,
+						BUTTON_EXTI_SAMPLES_REQUIRED))
+	{
+		switch_state ^= 1;
+	}
+
+	/* Clear EXTI4 pending register flag */
+
+		//type your code for pending register flag clear here:
+}
+
+/* USER CODE BEGIN 4 */
 
 /* USER CODE END 4 */
 
