@@ -53,6 +53,10 @@ int main(void)
   	  //type your code for EXTI configuration (priority, enable EXTI, setup EXTI for input pin, trigger edge) here:
      NVIC_SetPriority(EXTI4_IRQn, 2);
      NVIC_EnableIRQ(EXTI4_IRQn);
+  /*set EXTI source PB4*/
+     SYSCFG->EXTICR[1] &= ~(0xFU << 0U);
+     SYSCFG->EXTICR[1] |= (0x1 << 0U);
+
 
   /* Configure GPIOB-4 pin as an input pin - button */
 
