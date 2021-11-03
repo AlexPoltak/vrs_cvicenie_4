@@ -56,6 +56,11 @@ int main(void)
   /*set EXTI source PB4*/
      SYSCFG->EXTICR[1] &= ~(0xFU << 0U);
      SYSCFG->EXTICR[1] |= (0x1 << 0U);
+    //Enable interrupt from EXTI line 4
+     EXTI->IMR |= EXTI_IMR_MR4;
+    //Set EXTI trigger to falling edge
+     EXTI->RTSR &= ~(EXTI_IMR_MR4);
+     EXTI->FTSR |= EXTI_IMR_MR4;
 
 
   /* Configure GPIOB-4 pin as an input pin - button */
